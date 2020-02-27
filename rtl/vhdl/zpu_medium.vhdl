@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: BSD-2-Clause
 ------------------------------------------------------------------------------
 ----                                                                      ----
 ----  ZPU Medium                                                          ----
@@ -12,16 +13,16 @@
 ----  -                                                                   ----
 ----                                                                      ----
 ----  Author:                                                             ----
-----    - yvind Harboe, oyvind.harboe zylin.com                          ----
+----    - Øyvind Harboe, oyvind.harboe zylin.com                          ----
 ----    - Salvador E. Tropea, salvador inti.gob.ar                        ----
 ----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----
----- Copyright (c) 2008 yvind Harboe <oyvind.harboe zylin.com>           ----
+---- Copyright (c) 2008 Øyvind Harboe <oyvind.harboe zylin.com>           ----
 ---- Copyright (c) 2008 Salvador E. Tropea <salvador inti.gob.ar>         ----
----- Copyright (c) 2008 Instituto Nacional de Tecnologa Industrial       ----
+---- Copyright (c) 2008 Instituto Nacional de Tecnología Industrial       ----
 ----                                                                      ----
----- Distributed under the BSD license                                    ----
+---- Distributed under the BSD 2-Clause "Simplified" License              ----
 ----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----

@@ -1,11 +1,15 @@
+-- SPDX-License-Identifier: GPL-1.0-or-later
 ------------------------------------------------------------------------------
 ----                                                                      ----
-----  RS-232 simple Rx module                                             ----
+----  RS-232 baudrate generator                                           ----
 ----                                                                      ----
 ----  http://www.opencores.org/                                           ----
 ----                                                                      ----
 ----  Description:                                                        ----
-----  Implements a simple 8N1 rx module for RS-232.                       ----
+----  This counter is a parametrizable clock divider. The count value is  ----
+----  the generic parameter COUNT. It has a chip enable ce_i input.       ----
+----  (will count only if CE is high).                                    ----
+----  When it overflows, will emit a pulse on o_o.                        ----
 ----                                                                      ----
 ----  To Do:                                                              ----
 ----  -                                                                   ----
@@ -24,10 +28,13 @@
 ----                                                                      ----
 ---- Distributed under the GPL license                                    ----
 ----                                                                      ----
+---- You should have received a copy of the GNU General Public License    ----
+---- along with this program. If not, see <https://www.gnu.org/licenses/> ----
+----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----
----- Design unit:      RxUnit(Behaviour) (Entity and architecture)        ----
----- File name:        rx_unit.vhdl                                       ----
+---- Design unit:      BRGen(Behaviour) (Entity and architecture)         ----
+---- File name:        br_gen.vhdl                                        ----
 ---- Note:             None                                               ----
 ---- Limitations:      None known                                         ----
 ---- Errors:           None known                                         ----
@@ -44,65 +51,45 @@
 
 library IEEE;
 use IEEE.std_logic_1164.all;
-   
-entity RxUnit is
-   port(
-      clk_i    : in  std_logic;  -- System clock signal
-      reset_i  : in  std_logic;  -- Reset input (sync)
-      enable_i : in  std_logic;  -- Enable input (rate*4)
-      read_i   : in  std_logic;  -- Received Byte Read
-      rxd_i    : in  std_logic;  -- RS-232 data input
-      rxav_o   : out std_logic;  -- Byte available
-      datao_o  : out std_logic_vector(7 downto 0)); -- Byte received
-end entity RxUnit;
 
-architecture Behaviour of RxUnit is
-   signal r_r      : std_logic_vector(7 downto 0); -- Receive register
-   signal bavail_r : std_logic:='0';               -- Byte received
+entity BRGen is
+  generic(
+     COUNT : integer range 0 to 65535);-- Count revolution
+  port (
+     clk_i   : in  std_logic;  -- Clock
+     reset_i : in  std_logic;  -- Reset input
+     ce_i    : in  std_logic;  -- Chip Enable
+     o_o     : out std_logic); -- Output
+end entity BRGen;
+
+architecture Behaviour of BRGen is
+
 begin
-   rxav_o <= bavail_r;
-   -- Rx Process
-   RxProc:
-   process (clk_i)
-      variable bitpos    : integer range 0 to 10; -- Position of the bit in the frame
-      variable samplecnt : integer range 0 to 3;  -- Count from 0 to 3 in each bit
-   begin
-      if rising_edge(clk_i) then
-         if reset_i='1' then
-            bavail_r <= '0';
-            bitpos:=0;
-         else -- reset_i='0'
-            if read_i='1' then
-               bavail_r <= '0';
-            end if;
-            if enable_i='1' then
-               case bitpos is
-                    when 0 => -- idle
-                         bavail_r <= '0';
-                         if rxd_i='0' then -- Start Bit
-                            samplecnt:=0;
-                            bitpos:=1;
-                         end if;
-                    when 10 => -- Stop Bit
-                         bitpos:=0;    -- next is idle
-                         bavail_r <= '1';    -- Indicate byte received
-                         datao_o  <= r_r; -- Store received byte
-                    when others =>
-                         if samplecnt=1 and bitpos>=2 then -- Sample RxD on 1
-                            r_r(bitpos-2) <= rxd_i; -- Deserialisation
-                         end if;
-                         if samplecnt=3 then -- Increment BitPos on 3
-                            bitpos:=bitpos+1;
-                         end if;
-               end case;
-               if samplecnt=3 then
-                  samplecnt:=0;
-               else
-                  samplecnt:=samplecnt+1;
-               end if;
-            end if; -- enable_i='1'
-         end if; -- reset_i='0'
-      end if; -- rising_edge(clk_i)
-   end process RxProc;
-end architecture Behaviour;
+  CountGen:
+  if COUNT/=1 generate
+     Counter:
+     process (clk_i)
+        variable cnt : integer range 0 to COUNT-1;
+     begin
+        if rising_edge(clk_i) then
+           o_o <= '0';
+           if reset_i='1' then
+              cnt:=COUNT-1;
+           elsif ce_i='1' then
+              if cnt=0 then
+                 o_o <= '1';
+                 cnt:=COUNT-1;
+              else
+                 cnt:=cnt-1;
+              end if; -- cnt/=0
+           end if; -- ce_i='1'
+        end if; -- rising_edge(clk_i)
+     end process Counter;
+  end generate CountGen;
+
+  CountWire:
+  if COUNT=1 generate
+     o_o <= '0' when reset_i='1' else ce_i;
+  end generate CountWire;
+end architecture Behaviour; -- Entity: BRGen
 

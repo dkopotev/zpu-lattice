@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: BSD-2-Clause
 ------------------------------------------------------------------------------
 ----                                                                      ----
 ----  ZPU Medium + PHI I/O + BRAM                                         ----
@@ -19,7 +20,7 @@
 ---- Copyright (c) 2008 Salvador E. Tropea <salvador inti.gob.ar>         ----
 ---- Copyright (c) 2008 Instituto Nacional de Tecnología Industrial       ----
 ----                                                                      ----
----- Distributed under the BSD license                                    ----
+---- Distributed under the BSD 2-Clause "Simplified" License              ----
 ----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----

@@ -1,14 +1,12 @@
+-- SPDX-License-Identifier: GPL-1.0-or-later
 ------------------------------------------------------------------------------
 ----                                                                      ----
-----  RS-232 baudrate generator                                           ----
+----  RS-232 simple Tx module                                             ----
 ----                                                                      ----
 ----  http://www.opencores.org/                                           ----
 ----                                                                      ----
 ----  Description:                                                        ----
-----  This counter is a parametrizable clock divider. The count value is  ----
-----  the generic parameter COUNT. It has a chip enable ce_i input.       ----
-----  (will count only if CE is high).                                    ----
-----  When it overflows, will emit a pulse on o_o.                        ----
+----  Implements a simple 8N1 tx module for RS-232.                       ----
 ----                                                                      ----
 ----  To Do:                                                              ----
 ----  -                                                                   ----
@@ -27,15 +25,19 @@
 ----                                                                      ----
 ---- Distributed under the GPL license                                    ----
 ----                                                                      ----
+---- You should have received a copy of the GNU General Public License    ----
+---- along with this program. If not, see <https://www.gnu.org/licenses/> ----
+----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----
----- Design unit:      BRGen(Behaviour) (Entity and architecture)         ----
----- File name:        br_gen.vhdl                                        ----
+---- Design unit:      TxUnit(Behaviour) (Entity and architecture)        ----
+---- File name:        Txunit.vhdl                                        ----
 ---- Note:             None                                               ----
 ---- Limitations:      None known                                         ----
 ---- Errors:           None known                                         ----
 ---- Library:          zpu                                                ----
 ---- Dependencies:     IEEE.std_logic_1164                                ----
+----                   zpu.UART                                           ----
 ---- Target FPGA:      Spartan                                            ----
 ---- Language:         VHDL                                               ----
 ---- Wishbone:         No                                                 ----
@@ -48,44 +50,65 @@
 library IEEE;
 use IEEE.std_logic_1164.all;
 
-entity BRGen is
-  generic(
-     COUNT : integer range 0 to 65535);-- Count revolution
+library work;
+use work.UART.all;
+
+entity TxUnit is
   port (
-     clk_i   : in  std_logic;  -- Clock
-     reset_i : in  std_logic;  -- Reset input
-     ce_i    : in  std_logic;  -- Chip Enable
-     o_o     : out std_logic); -- Output
-end entity BRGen;
+     clk_i    : in  std_logic;  -- Clock signal
+     reset_i  : in  std_logic;  -- Reset input
+     enable_i : in  std_logic;  -- Enable input
+     load_i   : in  std_logic;  -- Load input
+     txd_o    : out std_logic;  -- RS-232 data output
+     busy_o   : out std_logic;  -- Tx Busy
+     datai_i  : in  std_logic_vector(7 downto 0)); -- Byte to transmit
+end entity TxUnit;
 
-architecture Behaviour of BRGen is
-
+architecture Behaviour of TxUnit is
+   signal tbuff_r  : std_logic_vector(7 downto 0); -- transmit buffer
+   signal t_r      : std_logic_vector(7 downto 0); -- transmit register
+   signal loaded_r : std_logic:='0';  -- Buffer loaded
+   signal txd_r    : std_logic:='1';  -- Tx buffer ready
 begin
-  CountGen:
-  if COUNT/=1 generate
-     Counter:
-     process (clk_i)
-        variable cnt : integer range 0 to COUNT-1;
-     begin
-        if rising_edge(clk_i) then
-           o_o <= '0';
-           if reset_i='1' then
-              cnt:=COUNT-1;
-           elsif ce_i='1' then
-              if cnt=0 then
-                 o_o <= '1';
-                 cnt:=COUNT-1;
-              else
-                 cnt:=cnt-1;
-              end if; -- cnt/=0
-           end if; -- ce_i='1'
-        end if; -- rising_edge(clk_i)
-     end process Counter;
-  end generate CountGen;
+  busy_o <= load_i or loaded_r;
+  txd_o  <= txd_r;
 
-  CountWire:
-  if COUNT=1 generate
-     o_o <= '0' when reset_i='1' else ce_i;
-  end generate CountWire;
-end architecture Behaviour; -- Entity: BRGen
-
+  -- Tx process
+  TxProc:
+  process (clk_i)
+     variable bitpos : integer range 0 to 10; -- Bit position in the frame
+  begin
+     if rising_edge(clk_i) then
+        if reset_i='1' then
+           loaded_r <= '0';
+           bitpos:=0;
+           txd_r <= '1';
+        else -- reset_i='0'
+           if load_i='1' then
+              tbuff_r  <= datai_i;
+              loaded_r <= '1';
+           end if;
+           if enable_i='1' then
+              case bitpos is
+                   when 0 => -- idle or stop bit
+                        txd_r <= '1';
+                        if loaded_r='1' then -- start transmit. next is start bit
+                           t_r <= tbuff_r;
+                           loaded_r <= '0';
+                           bitpos:=1;
+                        end if;
+                   when 1 => -- Start bit
+                        txd_r <= '0';
+                        bitpos:=2;
+                   when others =>
+                        txd_r <= t_r(bitpos-2); -- Serialisation of t_r
+                        bitpos:=bitpos+1;
+              end case;
+              if bitpos=10 then -- bit8. next is stop bit
+                 bitpos:=0;
+              end if;
+           end if; -- enable_i='1'
+        end if; -- reset_i='0'
+     end if; -- rising_edge(clk_i)
+  end process TxProc;
+end architecture Behaviour;

@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: BSD-2-Clause
 ------------------------------------------------------------------------------
 ----                                                                      ----
 ----  Text Utils                                                          ----
@@ -11,13 +12,13 @@
 ----  -                                                                   ----
 ----                                                                      ----
 ----  Author:                                                             ----
-----    - yvind Harboe, oyvind.harboe zylin.com                          ----
+----    - Øyvind Harboe, oyvind.harboe zylin.com                          ----
 ----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----
----- Copyright (c) 2008 yvind Harboe <oyvind.harboe zylin.com>           ----
+---- Copyright (c) 2008 Øyvind Harboe <oyvind.harboe zylin.com>           ----
 ----                                                                      ----
----- Distributed under the BSD license                                    ----
+---- Distributed under the BSD 2-Clause "Simplified" License              ----
 ----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----

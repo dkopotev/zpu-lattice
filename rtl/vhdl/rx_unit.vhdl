@@ -1,11 +1,12 @@
+-- SPDX-License-Identifier: GPL-1.0-or-later
 ------------------------------------------------------------------------------
 ----                                                                      ----
-----  RS-232 simple Tx module                                             ----
+----  RS-232 simple Rx module                                             ----
 ----                                                                      ----
 ----  http://www.opencores.org/                                           ----
 ----                                                                      ----
 ----  Description:                                                        ----
-----  Implements a simple 8N1 tx module for RS-232.                       ----
+----  Implements a simple 8N1 rx module for RS-232.                       ----
 ----                                                                      ----
 ----  To Do:                                                              ----
 ----  -                                                                   ----
@@ -24,16 +25,18 @@
 ----                                                                      ----
 ---- Distributed under the GPL license                                    ----
 ----                                                                      ----
+---- You should have received a copy of the GNU General Public License    ----
+---- along with this program. If not, see <https://www.gnu.org/licenses/> ----
+----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----
----- Design unit:      TxUnit(Behaviour) (Entity and architecture)        ----
----- File name:        Txunit.vhdl                                        ----
+---- Design unit:      RxUnit(Behaviour) (Entity and architecture)        ----
+---- File name:        rx_unit.vhdl                                       ----
 ---- Note:             None                                               ----
 ---- Limitations:      None known                                         ----
 ---- Errors:           None known                                         ----
 ---- Library:          zpu                                                ----
 ---- Dependencies:     IEEE.std_logic_1164                                ----
-----                   zpu.UART                                           ----
 ---- Target FPGA:      Spartan                                            ----
 ---- Language:         VHDL                                               ----
 ---- Wishbone:         No                                                 ----
@@ -45,66 +48,65 @@
 
 library IEEE;
 use IEEE.std_logic_1164.all;
+   
+entity RxUnit is
+   port(
+      clk_i    : in  std_logic;  -- System clock signal
+      reset_i  : in  std_logic;  -- Reset input (sync)
+      enable_i : in  std_logic;  -- Enable input (rate*4)
+      read_i   : in  std_logic;  -- Received Byte Read
+      rxd_i    : in  std_logic;  -- RS-232 data input
+      rxav_o   : out std_logic;  -- Byte available
+      datao_o  : out std_logic_vector(7 downto 0)); -- Byte received
+end entity RxUnit;
 
-library work;
-use work.UART.all;
-
-entity TxUnit is
-  port (
-     clk_i    : in  std_logic;  -- Clock signal
-     reset_i  : in  std_logic;  -- Reset input
-     enable_i : in  std_logic;  -- Enable input
-     load_i   : in  std_logic;  -- Load input
-     txd_o    : out std_logic;  -- RS-232 data output
-     busy_o   : out std_logic;  -- Tx Busy
-     datai_i  : in  std_logic_vector(7 downto 0)); -- Byte to transmit
-end entity TxUnit;
-
-architecture Behaviour of TxUnit is
-   signal tbuff_r  : std_logic_vector(7 downto 0); -- transmit buffer
-   signal t_r      : std_logic_vector(7 downto 0); -- transmit register
-   signal loaded_r : std_logic:='0';  -- Buffer loaded
-   signal txd_r    : std_logic:='1';  -- Tx buffer ready
+architecture Behaviour of RxUnit is
+   signal r_r      : std_logic_vector(7 downto 0); -- Receive register
+   signal bavail_r : std_logic:='0';               -- Byte received
 begin
-  busy_o <= load_i or loaded_r;
-  txd_o  <= txd_r;
-
-  -- Tx process
-  TxProc:
-  process (clk_i)
-     variable bitpos : integer range 0 to 10; -- Bit position in the frame
-  begin
-     if rising_edge(clk_i) then
-        if reset_i='1' then
-           loaded_r <= '0';
-           bitpos:=0;
-           txd_r <= '1';
-        else -- reset_i='0'
-           if load_i='1' then
-              tbuff_r  <= datai_i;
-              loaded_r <= '1';
-           end if;
-           if enable_i='1' then
-              case bitpos is
-                   when 0 => -- idle or stop bit
-                        txd_r <= '1';
-                        if loaded_r='1' then -- start transmit. next is start bit
-                           t_r <= tbuff_r;
-                           loaded_r <= '0';
-                           bitpos:=1;
-                        end if;
-                   when 1 => -- Start bit
-                        txd_r <= '0';
-                        bitpos:=2;
-                   when others =>
-                        txd_r <= t_r(bitpos-2); -- Serialisation of t_r
-                        bitpos:=bitpos+1;
-              end case;
-              if bitpos=10 then -- bit8. next is stop bit
-                 bitpos:=0;
-              end if;
-           end if; -- enable_i='1'
-        end if; -- reset_i='0'
-     end if; -- rising_edge(clk_i)
-  end process TxProc;
+   rxav_o <= bavail_r;
+   -- Rx Process
+   RxProc:
+   process (clk_i)
+      variable bitpos    : integer range 0 to 10; -- Position of the bit in the frame
+      variable samplecnt : integer range 0 to 3;  -- Count from 0 to 3 in each bit
+   begin
+      if rising_edge(clk_i) then
+         if reset_i='1' then
+            bavail_r <= '0';
+            bitpos:=0;
+         else -- reset_i='0'
+            if read_i='1' then
+               bavail_r <= '0';
+            end if;
+            if enable_i='1' then
+               case bitpos is
+                    when 0 => -- idle
+                         bavail_r <= '0';
+                         if rxd_i='0' then -- Start Bit
+                            samplecnt:=0;
+                            bitpos:=1;
+                         end if;
+                    when 10 => -- Stop Bit
+                         bitpos:=0;    -- next is idle
+                         bavail_r <= '1';    -- Indicate byte received
+                         datao_o  <= r_r; -- Store received byte
+                    when others =>
+                         if samplecnt=1 and bitpos>=2 then -- Sample RxD on 1
+                            r_r(bitpos-2) <= rxd_i; -- Deserialisation
+                         end if;
+                         if samplecnt=3 then -- Increment BitPos on 3
+                            bitpos:=bitpos+1;
+                         end if;
+               end case;
+               if samplecnt=3 then
+                  samplecnt:=0;
+               else
+                  samplecnt:=samplecnt+1;
+               end if;
+            end if; -- enable_i='1'
+         end if; -- reset_i='0'
+      end if; -- rising_edge(clk_i)
+   end process RxProc;
 end architecture Behaviour;
+

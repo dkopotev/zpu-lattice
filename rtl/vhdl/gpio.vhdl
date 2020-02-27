@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: BSD-2-Clause
 --
 -- this module desribes a simple GPIO interface
 --
