@@ -23,7 +23,8 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.all;
-USE ieee.std_logic_unsigned.all;
+--USE ieee.std_logic_unsigned.all;
+use ieee.numeric_std.all;
 
 ENTITY debounce IS
   GENERIC(
@@ -37,7 +38,7 @@ END debounce;
 ARCHITECTURE logic OF debounce IS
   SIGNAL flipflops   : STD_LOGIC_VECTOR(1 DOWNTO 0); --input flip flops
   SIGNAL counter_set : STD_LOGIC;                    --sync reset to zero
-  SIGNAL counter_out : STD_LOGIC_VECTOR(counter_size DOWNTO 0) := (OTHERS => '0'); --counter output
+  SIGNAL counter_out : unsigned(counter_size DOWNTO 0) := (OTHERS => '0'); --counter output
 BEGIN
 
   counter_set <= flipflops(0) xor flipflops(1);   --determine when to start/reset counter

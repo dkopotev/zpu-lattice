@@ -68,6 +68,7 @@ entity zpu_top is
       break_o    : out std_logic;  -- Break executed
       rs232_tx_o : out std_logic;  -- UART Tx
       rs232_rx_i : in  std_logic;  -- UART Rx
+      dbg_o      : out zpu_dbgo_t; -- debug info
 
       LED2  : out std_logic;
       LED3  : out std_logic;
@@ -112,9 +113,12 @@ architecture rtl of zpu_top is
    signal gpio_in      : std_logic_vector(31 downto 0);
    signal gpio_out     : std_logic_vector(31 downto 0);
    signal gpio_dir     : std_logic_vector(31 downto 0);
-   signal dbg_o        : zpu_dbgo_t;  -- Debug info
+   --signal dbg_o        : zpu_dbgo_t;  -- Debug info
    signal reset  	   : std_logic;
+   signal rst_i_n      : std_logic;
 begin
+   --rst_i_n <= not rst_i;
+
    -- Reset debounce
    rst_debounce: debounce
       generic map(
@@ -122,7 +126,8 @@ begin
          )
       port map(
          clk        => clk_i, 
-         button     => not rst_i,  --make reset active low
+         --button     => not rst_i,  --make reset active low
+         button     => rst_i_n,
          result     => reset
          );
 

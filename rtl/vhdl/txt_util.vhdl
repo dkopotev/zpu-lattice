@@ -12,11 +12,11 @@
 ----  -                                                                   ----
 ----                                                                      ----
 ----  Author:                                                             ----
-----    - Øyvind Harboe, oyvind.harboe zylin.com                          ----
+----    - Oeyvind Harboe, oyvind.harboe zylin.com                         ----
 ----                                                                      ----
 ------------------------------------------------------------------------------
 ----                                                                      ----
----- Copyright (c) 2008 Øyvind Harboe <oyvind.harboe zylin.com>           ----
+---- Copyright (c) 2008 Oeyvind Harboe <oyvind.harboe zylin.com>          ----
 ----                                                                      ----
 ---- Distributed under the BSD 2-Clause "Simplified" License              ----
 ----                                                                      ----
