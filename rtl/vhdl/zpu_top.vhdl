@@ -117,7 +117,7 @@ architecture rtl of zpu_top is
    signal reset  	   : std_logic;
    signal rst_i_n      : std_logic;
 begin
-   --rst_i_n <= not rst_i;
+   rst_i_n <= not rst_i;
 
    -- Reset debounce
    rst_debounce: debounce
